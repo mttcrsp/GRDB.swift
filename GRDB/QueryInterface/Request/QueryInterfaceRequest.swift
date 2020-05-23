@@ -133,7 +133,7 @@ extension QueryInterfaceRequest: SelectionRequest {
     ///         .select { db in [Column("id")] }
     ///         .select { db in [Column("email")] }
     public func select(_ selection: @escaping (Database) throws -> [SQLSelectable]) -> QueryInterfaceRequest {
-        map(\.query) { $0.select(selection) }
+        map(\.query.relation) { $0.select(selection) }
     }
     
     /// Creates a request which selects *selection*, and fetches values of
@@ -147,7 +147,7 @@ extension QueryInterfaceRequest: SelectionRequest {
     public func select<RowDecoder>(_ selection: [SQLSelectable], as type: RowDecoder.Type = RowDecoder.self)
         -> QueryInterfaceRequest<RowDecoder>
     {
-        map(\.query, { $0.select(selection) }).asRequest(of: RowDecoder.self)
+        map(\.query.relation, { $0.select(selection) }).asRequest(of: RowDecoder.self)
     }
     
     /// Creates a request which selects *selection*, and fetches values of
@@ -224,7 +224,7 @@ extension QueryInterfaceRequest: SelectionRequest {
     ///         .select([Column("id"), Column("email")])
     ///         .annotated(with: { db in [Column("name")] })
     public func annotated(with selection: @escaping (Database) throws -> [SQLSelectable]) -> QueryInterfaceRequest {
-        map(\.query) { $0.annotated(with: selection) }
+        map(\.query.relation) { $0.annotated(with: selection) }
     }
 }
 
@@ -236,7 +236,7 @@ extension QueryInterfaceRequest: FilteredRequest {
     ///     var request = Player.all()
     ///     request = request.filter { db in true }
     public func filter(_ predicate: @escaping (Database) throws -> SQLExpressible) -> QueryInterfaceRequest {
-        map(\.query) { $0.filter(predicate) }
+        map(\.query.relation) { $0.filter(predicate) }
     }
 }
 
@@ -255,7 +255,7 @@ extension QueryInterfaceRequest: OrderedRequest {
     ///         .reversed()
     ///         .order{ _ in [Column("name")] }
     public func order(_ orderings: @escaping (Database) throws -> [SQLOrderingTerm]) -> QueryInterfaceRequest {
-        map(\.query) { $0.order(orderings) }
+        map(\.query.relation) { $0.order(orderings) }
     }
     
     /// Creates a request that reverses applied orderings.
@@ -270,7 +270,7 @@ extension QueryInterfaceRequest: OrderedRequest {
     ///     var request = Player.all()
     ///     request = request.reversed()
     public func reversed() -> QueryInterfaceRequest {
-        map(\.query) { $0.reversed() }
+        map(\.query.relation) { $0.reversed() }
     }
     
     /// Creates a request without any ordering.
@@ -279,7 +279,7 @@ extension QueryInterfaceRequest: OrderedRequest {
     ///     var request = Player.all().order(Column("name"))
     ///     request = request.unordered()
     public func unordered() -> QueryInterfaceRequest {
-        map(\.query) { $0.unordered() }
+        map(\.query.relation) { $0.unordered() }
     }
 }
 
@@ -299,27 +299,27 @@ extension QueryInterfaceRequest: AggregatingRequest {
 extension QueryInterfaceRequest: _JoinableRequest {
     /// :nodoc:
     public func _including(all association: SQLAssociation) -> QueryInterfaceRequest {
-        map(\.query) { $0._including(all: association) }
+        map(\.query.relation) { $0._including(all: association) }
     }
     
     /// :nodoc:
     public func _including(optional association: SQLAssociation) -> QueryInterfaceRequest {
-        map(\.query) { $0._including(optional: association) }
+        map(\.query.relation) { $0._including(optional: association) }
     }
     
     /// :nodoc:
     public func _including(required association: SQLAssociation) -> QueryInterfaceRequest {
-        map(\.query) { $0._including(required: association) }
+        map(\.query.relation) { $0._including(required: association) }
     }
     
     /// :nodoc:
     public func _joining(optional association: SQLAssociation) -> QueryInterfaceRequest {
-        map(\.query) { $0._joining(optional: association) }
+        map(\.query.relation) { $0._joining(optional: association) }
     }
     
     /// :nodoc:
     public func _joining(required association: SQLAssociation) -> QueryInterfaceRequest {
-        map(\.query) { $0._joining(required: association) }
+        map(\.query.relation) { $0._joining(required: association) }
     }
 }
 
