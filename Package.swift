@@ -19,11 +19,16 @@ let package = Package(
     targets: [
         .systemLibrary(
             name: "CSQLite",
-            providers: [.apt(["libsqlite3-dev"])]),
+            providers: [.apt(["libsqlite3-dev"])]
+        ),
         .target(
             name: "GRDB",
             dependencies: ["CSQLite"],
-            path: "GRDB"),
+            path: "GRDB",
+            swiftSettings: [
+                .define("SQLITE_ENABLE_FTS5")
+            ]
+        ),
         .testTarget(
             name: "GRDBTests",
             dependencies: ["GRDB"],
@@ -34,7 +39,8 @@ let package = Package(
                 "Crash",
                 "Performance",
                 "SPM",
-            ])
+            ]
+        ),
     ],
     swiftLanguageVersions: [.v5]
 )
