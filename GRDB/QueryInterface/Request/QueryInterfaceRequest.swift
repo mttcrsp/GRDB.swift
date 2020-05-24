@@ -323,7 +323,14 @@ extension QueryInterfaceRequest: _JoinableRequest {
     }
 }
 
-extension QueryInterfaceRequest: JoinableRequest where RowDecoder: TableRecord { }
+extension QueryInterfaceRequest: JoinableRequest where RowDecoder: TableRecord {
+    /// The request contains a "fragile" aggregate which be miscalculated
+    /// (sum and average). A fatal error is emitted when we can't make sure it
+    /// is correctly computed. See https://github.com/groue/GRDB.swift/issues/777.
+    func withFragileAggregate() -> Self {
+        map(\.query.relation) { $0.withFragileAggregate() }
+    }
+}
 
 extension QueryInterfaceRequest: TableRequest {
     /// :nodoc:

@@ -163,13 +163,32 @@ struct SQLRelation {
     }
     
     var source: SQLSource
-    var selectionPromise: DatabasePromise<[SQLSelectable]> = DatabasePromise(value: [])
+    var selectionPromise: DatabasePromise<[SQLSelectable]>
     // Filter is an array of expressions that we'll join with the AND operator.
     // This gives nicer output in generated SQL: `(a AND b AND c)` instead of
     // `((a AND b) AND c)`.
-    var filtersPromise: DatabasePromise<[SQLExpression]> = DatabasePromise(value: [])
-    var ordering: SQLRelation.Ordering = SQLRelation.Ordering()
-    var children: OrderedDictionary<String, Child> = [:]
+    var filtersPromise: DatabasePromise<[SQLExpression]>
+    var ordering: SQLRelation.Ordering
+    var children: OrderedDictionary<String, Child>
+    var containsFragileAggregate: Bool
+    
+    init(
+        source: SQLSource,
+        selectionPromise: DatabasePromise<[SQLSelectable]> = DatabasePromise(value: []),
+        filtersPromise: DatabasePromise<[SQLExpression]> = DatabasePromise(value: []),
+        ordering: SQLRelation.Ordering = SQLRelation.Ordering(),
+        children: OrderedDictionary<String, Child> = [:],
+        containsFragileAggregate: Bool = false)
+    {
+        self.source = source
+        self.selectionPromise = selectionPromise
+        self.filtersPromise = filtersPromise
+        self.ordering = ordering
+        self.children = children
+        self.containsFragileAggregate = containsFragileAggregate
+        
+        checkForFragileAggregate()
+    }
     
     var prefetchedAssociations: [SQLAssociation] {
         children.flatMap { key, child -> [SQLAssociation] in
@@ -395,8 +414,10 @@ extension SQLRelation {
             }
             relation.children.appendValue(mergedChild, forKey: key)
         } else {
+            #warning("TODO: don't we have to set child's containsFragileAggregate flag?")
             relation.children.appendValue(child, forKey: key)
         }
+        relation.checkForFragileAggregate()
         return relation
     }
     
@@ -417,6 +438,31 @@ extension SQLRelation {
                     }
                 })
         }
+    }
+    
+    /// The relation contains a "fragile" aggregate which be miscalculated
+    /// (sum and average). A fatal error is emitted when we can't make sure it
+    /// is correctly computed. See https://github.com/groue/GRDB.swift/issues/777.
+    func withFragileAggregate() -> Self {
+        if containsFragileAggregate { return self }
+        return with {
+            $0.containsFragileAggregate = true
+            $0.checkForFragileAggregate()
+            
+            $0.children = children.mapValues { child in
+                child.map(\.relation) { relation in
+                    relation.withFragileAggregate()
+                }
+            }
+        }
+    }
+    
+    private func checkForFragileAggregate() {
+        guard containsFragileAggregate else {
+            return
+        }
+        
+        #warning("TODO: check is we may miscalculate fragile aggregates")
     }
 }
 
@@ -734,6 +780,7 @@ extension SQLRelation {
             try self.filtersPromise.resolve(db) + other.filtersPromise.resolve(db)
         }
         
+        #warning("TODO: don't we have to set the children containsFragileAggregate flag?")
         var mergedChildren: OrderedDictionary<String, SQLRelation.Child> = [:]
         for (key, child) in children {
             if let otherChild = other.children[key] {
@@ -768,7 +815,8 @@ extension SQLRelation {
             selectionPromise: mergedSelectionPromise,
             filtersPromise: mergedFiltersPromise,
             ordering: mergedOrdering,
-            children: mergedChildren)
+            children: mergedChildren,
+            containsFragileAggregate: containsFragileAggregate || other.containsFragileAggregate)
     }
 }
 
